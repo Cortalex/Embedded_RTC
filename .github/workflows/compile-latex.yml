@@ -1,0 +1,30 @@
+name: Compile LaTeX Report
+
+on:
+  push:
+    branches: [ main ] # o master, in base al branch principale
+    paths:
+      - '**.ltx'
+      - '**.tex'
+      - 'immagini/**'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: report.ltx # Se il file è in una sottocartella: cartella/report.ltx
+          # args: -pdf -interaction=nonstopmode
+
+      - name: Upload PDF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-pdf
+          path: report.pdf # Stesso percorso dove viene generato il PDF
