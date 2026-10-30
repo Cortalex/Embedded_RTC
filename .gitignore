@@ -1,1 +1,30 @@
 .DS_Store
+## File ausiliari e di compilazione LaTeX
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.dvi
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.vrb
+
+## File temporanei di VS Code e LaTeX Workshop
+.vscode/
+*.bak
+
+## Output PDF (decommenta la riga sotto se NON vuoi tracciare il PDF finale)
+*.pdf
