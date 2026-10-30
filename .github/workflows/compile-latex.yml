@@ -20,11 +20,10 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: Report/report.ltx # Se il file è in una sottocartella: cartella/report.ltx
-          # args: -pdf -interaction=nonstopmode
+          root_file: report.tex
 
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: report-pdf
-          path: report.pdf # Stesso percorso dove viene generato il PDF
+          path: report.pdf
