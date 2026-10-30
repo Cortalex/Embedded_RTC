@@ -108,6 +108,9 @@ uint8_t data_col;
 uint8_t data_row;
 
 double frequency = 1000;
+#define SIZE 6;
+char input[SIZE];
+int counter = 0;
 // EXERCISE 1-2 (KEYPAD)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -180,38 +183,59 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		//EXERCISE 5 (EZ WAY)
 		char mode = keypadLayout[row][col];
 		switch (mode){
-		case '1':
-			frequency = 1000;
-			break;
-		case '2':
-			frequency = 500;
-			break;
-		case '3':
-			frequency = 1000/3;
-			break;
-		case '4':
-			frequency = 1000/4;
-			break;
-		case '5':
-			frequency = 1000/5;
-			break;
-		case '6':
-			frequency = 1000/6;
-			break;
-		case '7':
-			frequency = 1000/7;
-			break;
-		case '8':
-			frequency = 1000/8;
-			break;
-		case '9':
-			frequency = 1000/9;
-			break;
-		default:
-			frequency = 1000;
+      case '1':
+        frequency = 1000;
+        break;
+      case '2':
+        frequency = 500;
+        break;
+      case '3':
+        frequency = 1000/3;
+        break;
+      case '4':
+        frequency = 1000/4;
+        break;
+      case '5':
+        frequency = 1000/5;
+        break;
+      case '6':
+        frequency = 1000/6;
+        break;
+      case '7':
+        frequency = 1000/7;
+        break;
+      case '8':
+        frequency = 1000/8;
+        break;
+      case '9':
+        frequency = 1000/9;
+        break;
+      default:
+        frequency = 1000;
 		}
+
+    //EXERCISE 5 (HARD WAY)
+    if (mode >= '0' && mode <= '9'){
+      if (counter < SIZE - 1){
+        input[counter] = mode;
+        counter++;
+        input[counter] = '\0';
+      }
+    }
+    else if (mode == '#'){
+      if (counter > 0){
+        int number = atoi(input); //atoi converts a string to an integer
+
+        if (number > 0){
+          frequency = 1000.0 / number;
+        }
+        counter = 0;
+        input[0] = '\0';
+      }
+    }else {
+      frequency = 1000;
+    }
 	}
-	// Cols and Rows initialization is different wrt handouts ( '*' is 254,254, diag goes from '*' to 'A')
 }
 
 // EXERCISE 4
