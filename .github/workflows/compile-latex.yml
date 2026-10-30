@@ -2,11 +2,10 @@ name: Compile LaTeX Report
 
 on:
   push:
-    branches: [ main ] # o master, in base al branch principale
+    branches: [ main ]
     paths:
-      - '**.ltx'
-      - '**.tex'
-      - 'immagini/**'
+      - 'Report/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
 
@@ -20,10 +19,10 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: report.tex
+          root_file: Report/report.tex
 
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: report-pdf
-          path: report.pdf
+          path: Report/report.pdf
