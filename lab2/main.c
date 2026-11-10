@@ -117,6 +117,7 @@ float speedMotor1(){
 	if (__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3)){
 	/* check for counter underflow */
 		if ( TIM3_CurrentCount <= TIM3_PreviousCount )
+      /* delta position in ticks*/
 			TIM3_DiffCount = TIM3_CurrentCount - TIM3_PreviousCount ;
 		else
 			TIM3_DiffCount = -(( TIM3_ARR_VALUE +1) - TIM3_CurrentCount ) - TIM3_PreviousCount ;
@@ -130,6 +131,9 @@ float speedMotor1(){
 	}
 	TIM3_PreviousCount = TIM3_CurrentCount;
 
+  /* here we should rather return TIM3_DiffCount bcs speed = ds/dt = (count_now - count_prev) / TS */
+  /* return (float)TIM3_DiffCount / TS * RPM2RADS */
+  /* currently we return the cumulative position (ticks of the encoder) which is wrong */
 	return TIM3_CurrentCount * RPM2RADS;
 }
 
@@ -138,10 +142,12 @@ float speedMotor2(){
 	int32_t TIM4_DiffCount ;
 	static uint32_t TIM4_PreviousCount = 0;
 	TIM4_CurrentCount = __HAL_TIM_GET_COUNTER (& htim4 ) ;
-	/* evaluate increment of TIM3 counter from previous count */
+	/* evaluate increment of TIM4 counter from previous count */
 	if (__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim4)){
 	/* check for counter underflow */
 		if ( TIM4_CurrentCount <= TIM4_PreviousCount )
+
+      /* delta position in ticks */
 			TIM4_DiffCount = TIM4_CurrentCount - TIM4_PreviousCount ;
 		else
 			TIM4_DiffCount = -(( TIM4_ARR_VALUE +1) - TIM4_CurrentCount ) - TIM4_PreviousCount ;
@@ -155,6 +161,9 @@ float speedMotor2(){
 	}
 	TIM4_PreviousCount = TIM4_CurrentCount;
 
+  /* here we should rather return TIM4_DiffCount bcs speed = ds/dt = (count_now - count_prev) / TS */
+  /* return (float)TIM4_DiffCount / TS * RPM2RADS */
+  /* currently we return the cumulative position (ticks of the encoder) which is wrong */
 	return TIM4_CurrentCount * RPM2RADS;
 }
 
@@ -174,10 +183,15 @@ float motorControl1(float* voltage){
 		__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_2 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
 
 	}else { // rotate backward
+    /* IMPORTANT: since duty<0 we need ARR - |duty|*/
+  /* __HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;*/
 		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , ( uint32_t ) ( TIM8_ARR_VALUE - duty )) ;
 		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_2 , ( uint32_t ) TIM8_ARR_VALUE ) ;
 	}
 
+  /* What we return here is useless, its purpose is only about datalogging*/
+  /* The real meaningful data we should return is the voltage and the duty cycle*/
+  /* return duty/(float)TIM8_ARR_VALUE */
 	float dutyPerc = (float)duty/100;
 
 	return dutyPerc;
@@ -198,9 +212,15 @@ float motorControl2(float* voltage){
 		__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_4 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
 
 	}else { // rotate backward
+  /* IMPORTANT: since duty<0 we need ARR - |duty|*/
+  /* __HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;*/
 		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_3 , ( uint32_t ) ( TIM8_ARR_VALUE - duty )) ;
 		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_4 , ( uint32_t ) TIM8_ARR_VALUE ) ;
 	}
+
+  /* What we return here is useless, its purpose is only about datalogging*/
+  /* The real meaningful data we should return is the voltage and the duty cycle*/
+  /* return duty/(float)TIM8_ARR_VALUE */
 
 	float dutyPerc = (float)duty/100;
 
@@ -220,6 +240,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
      	/*	Prepare data packet */
 		data.w1 = speedMotor1();
 		data.w2 = speedMotor2();
+
+    // maybe more correct to assign to a single var and then assign to u1, u2 since we compute voltage twice?
+    // we first save duty, then convert it back to the clamped voltage
+    // float duty_cycle = motorControl(&voltage); 
+    // float clamped_voltage = duty_cycle * VBATT (or duty * DUTY2V if we return duty);
+
+
+    /* here we should assign voltage to data.u1 and data.u2, which was modified by motorControlX() */
+    // data.u1 = clamped_voltage;
+    // data.u2 = clamped_voltage;
 
 		data.u1 = motorControl1(&voltage);
 		data.u2 = motorControl2(&voltage);
