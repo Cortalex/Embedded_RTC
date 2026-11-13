@@ -1,0 +1,250 @@
+\chapter{Laboratory 1: \texorpdfstring{$\text{I}^2\text{C}$}{I2C} Peripheral Integration -- Line Sensor and Keypad}
+\label{chap:lab1}
+
+\section{Introduction and Objectives}
+The main objective of this first laboratory experience is to gain practical familiarity with low-level peripheral communication using the $\text{I}^2\text{C}$ (Inter-Integrated Circuit) serial protocol on an STM32F7 micro-controller platform. In embedded real-time control, external sensors and user-interface peripherals are frequently integrated via serial buses to minimize pin count while maintaining high communication bandwidth.
+
+During this session, two Semtech SX1509 16-channel GPIO expanders are interfaced with the STM32F7 microcontroller over a single $\text{I}^2\text{C}$ bus (\texttt{I2C1}):
+\begin{itemize}
+    \item \textbf{Device 1 (\texttt{SX1509\_1}, address \texttt{0x3E}):} Interfaces with an 8-element Pololu QTR Reflectance Line Sensor mounted underneath the mobile robot.
+    \item \textbf{Device 2 (\texttt{SX1509\_2}, address \texttt{0x3F}):} Configured as a matrix keypad engine to manage a $4 \times 4$ tactile keypad, generating external hardware interrupts on pin \texttt{PF4}.
+\end{itemize}
+
+The experience covers polling mechanisms, timer-driven interrupt service routines (using \texttt{TIM6}), dynamic frequency parsing, and real-time debug logging via Single Wire Viewer (SWV) Instrumentation Trace Macrocell (ITM).
+
+---
+
+\section{Theoretical Background and System Architecture}
+
+\subsection{\texorpdfstring{$\text{I}^2\text{C}$}{I2C} Bus Topology and Peripheral Addresses}
+The $\text{I}^2\text{C}$ protocol employs a multi-slave, half-duplex, two-wire serial architecture consisting of a Serial Clock line (SCL) and a Serial Data line (SDA). As shown in Figure~\ref{fig:i2c_architecture}, both \texttt{SX1509\_1} and \texttt{SX1509\_2} share the \texttt{I2C1} hardware bus on the STM32 microcontroller. Bus collision is avoided by assigning distinct 7-bit slave addresses.
+
+% IMAGE INSTRUCTION: Insert a block diagram showing the I2C bus connections.
+% Place your image at: figures/i2c_architecture.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/i2c_architecture.png}
+    \caption{System architecture diagram highlighting the shared \texttt{I2C1} serial bus, device slave addresses (\texttt{0x3E} and \texttt{0x3F}), and the dedicated \texttt{NINT} interrupt line on \texttt{PF4}.}
+    \label{fig:i2c_architecture}
+\end{figure}
+
+\subsection{Pololu QTR Reflectance Sensor (Line Sensor)}
+The Pololu QTR reflectance array comprises $N=8$ IR transmitter photodiode pairs spaced at a pitch of $P = 8\text{ mm}$ ($0.008\text{ m}$). The sensor operates on the principle of optical reflection contrast: light-colored surfaces reflect infrared light (producing a logical \texttt{0}), whereas dark surfaces (such as a black trajectory line) absorb infrared emission (producing a logical \texttt{1}).
+
+% IMAGE INSTRUCTION: Insert a photo of the line sensor mounted under the robot.
+% Place your image at: figures/line_sensor_rover.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.55\textwidth]{figures/line_sensor_rover.png}
+    \caption{Pololu QTR 8-element reflectance sensor positioned underneath the front section of the mobile robot.}
+    \label{fig:line_sensor_rover}
+\end{figure}
+
+The digital states of all 8 elements are stored inside Bank B of \texttt{SX1509\_1} in the register \texttt{REG\_DATA\_B} (address \texttt{0x10}). Reading this single 8-bit register returns a bitmask representing the states of all sensing elements from Bit 0 (element 0) to Bit 7 (element 7).
+
+\subsection{Matrix Keypad Engine and Interrupt Handling}
+The keypad features a $4 \times 4$ mechanical matrix connected to the GPIO pins of \texttt{SX1509\_2}. Internal pull-up resistors maintain a default high logical state (\texttt{0xFF} or \texttt{255}) on row and column registers.
+
+% IMAGE INSTRUCTION: Insert the keypad matrix schematic diagram.
+% Place your image at: figures/keypad_schematic.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/keypad_schematic.png}
+    \caption{Keypad matrix schematic showing row and column pin connections to \texttt{SX1509\_2}.}
+    \label{fig:keypad_schematic}
+\end{figure}
+
+When a button is pressed, the corresponding row and column lines are pulled to ground (\texttt{0}). The hardware keypad engine inside \texttt{SX1509\_2} detects this state change and pulls the active-low interrupt line (\texttt{NINT}) low. This line is connected to pin \texttt{PF4} of the STM32, triggering an External Interrupt (\texttt{EXTI4}). Crucially, the \texttt{NINT} line remains asserted until the STM32 explicitly reads the column register \texttt{REG\_KEY\_DATA\_1} (\texttt{0x27}) and row register \texttt{REG\_KEY\_DATA\_2} (\texttt{0x28}).
+
+---
+
+\section{Experimental Setup and Implementation}
+
+\subsection{Exercise 1: Keypad Interrupt Service Routine}
+In Exercise 1, an External Interrupt Service Routine (ISR) was configured for pin \texttt{PF4} (\texttt{GPIO\_EXTI4\_KPAD\_IRQ}) in falling-edge trigger mode.
+
+To re-arm the \texttt{SX1509\_2} interrupt mechanism after a keypress, the ISR calls \texttt{HAL\_I2C\_Mem\_Read()} to pull data from registers \texttt{REG\_KEY\_DATA\_1} and \texttt{REG\_KEY\_DATA\_2}.
+
+\begin{lstlisting}[language=C, caption={Keypad EXTI callback implementation for Exercise 1 and Exercise 2.}, label={lst:ex1_callback}]
+uint8_t data_col;
+uint8_t data_row;
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    printf("Interrupt on pin (%d).\n", GPIO_Pin);
+
+    if (GPIO_Pin == GPIO_PIN_4)
+    {
+        /* Read column status register (REG_KEY_DATA_1) */
+        HAL_I2C_Mem_Read(&hi2c1, SX1509_I2C_ADDR2 << 1, REG_KEY_DATA_1,
+                         1, &data_col, 1, I2C_TIMEOUT);
+
+        /* Read row status register (REG_KEY_DATA_2) */
+        HAL_I2C_Mem_Read(&hi2c1, SX1509_I2C_ADDR2 << 1, REG_KEY_DATA_2,
+                         1, &data_row, 1, I2C_TIMEOUT);
+
+        printf("REG_KEY_DATA_1: %u | REG_KEY_DATA_2: %u\n", data_col, data_row);
+    }
+}
+\end{lstlisting}
+
+\textbf{Experimental Observation:} During hardware testing, we noted that the matrix register mapping on our physical hardware differed slightly from the initial theoretical diagram: the primary diagonal of the keypad matrix spanned from key \texttt{'*'} (register values \texttt{254, 254}) to key \texttt{'A'} (register values \texttt{247, 247}), rather than from key \texttt{'1'} to key \texttt{'D'}.
+
+\subsection{Exercise 2: Key Code Decoding}
+Exercise 2 extends the ISR to convert raw bitmask values into row and column indices (\texttt{0} to \texttt{3}), resolving the pressed character via a lookup table \texttt{keypadLayout[row][col]}.
+
+\begin{lstlisting}[language=C, caption={Decoding row and column register values to determine pressed key.}, label={lst:ex2_decode}]
+uint8_t col = 0, row = 0;
+
+switch (data_col) {
+    case 254: col = 0; break;
+    case 253: col = 1; break;
+    case 251: col = 2; break;
+    case 247: col = 3; break;
+}
+
+switch (data_row) {
+    case 254: row = 0; break;
+    case 253: row = 1; break;
+    case 251: row = 2; break;
+    case 247: row = 3; break;
+}
+
+printf("col: %d, row: %d\n", col, row);
+printf("pressed key: %c\n", keypadLayout[row][col]);
+\end{lstlisting}
+
+% IMAGE INSTRUCTION: Insert screenshot of the ITM Data Console showing keypress logs.
+% Place your image at: figures/itm_swo_console.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{figures/itm_swo_console.png}
+    \caption{SWV ITM Data Console showing real-time log outputs of register values and decoded key characters.}
+    \label{fig:itm_swo_console}
+\end{figure}
+
+\subsection{Exercise 3: Line Sensor Polling Routine}
+In Exercise 3, a polling routine was implemented in the main execution loop to read the line sensor status register \texttt{REG\_DATA\_B} from \texttt{SX1509\_1} (\texttt{0x3E}) at fixed intervals of $100\text{ ms}$ using \texttt{HAL\_Delay(100)}.
+
+\begin{lstlisting}[language=C, caption={Line sensor polling loop in main().}, label={lst:ex3_polling}]
+uint8_t data_line;
+HAL_StatusTypeDef status;
+
+while (1)
+{
+    status = HAL_I2C_Mem_Read(&hi2c1, SX1509_I2C_ADDR1 << 1, REG_DATA_B,
+                             1, &data_line, 1, I2C_TIMEOUT);
+    if (status != HAL_OK)
+        printf("I2C communication error (%X).\n", status);
+    else
+        printf("Data line: %d\n", data_line);
+
+    HAL_Delay(100);
+}
+\end{lstlisting}
+
+\subsection{Exercise 4: Timer Interrupt Driven Line Sensor Sampling}
+While polling functions correctly, blocking the CPU with \texttt{HAL\_Delay()} prevents real-time scheduling of other tasks. In Exercise 4, we replaced the polling loop with a non-blocking hardware timer interrupt using \texttt{TIM6}.
+
+% IMAGE INSTRUCTION: Insert a screenshot of the STM32CubeMX TIM6 configuration tab.
+% Place your image at: figures/tim6_cubemx_config.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{figures/tim6_cubemx_config.png}
+    \caption{STM32CubeMX configuration window showing parameter settings and NVIC interrupt activation for \texttt{TIM6}.}
+    \label{fig:tim6_cubemx_config}
+\end{figure}
+
+The interrupt update frequency $f_{\text{INT}}$ is governed by the timer clock frequency $f_{\text{CLK}}$:
+\begin{equation}
+    f_{\text{INT}} = \frac{f_{\text{CLK}}}{(\text{PSC} + 1) \cdot (\text{ARR} + 1)}
+\end{equation}
+
+To sample at $10\text{ Hz}$ ($100\text{ ms}$ period), \texttt{TIM6} was configured with a Prescaler (\text{PSC}) and Auto-Reload Register (\text{ARR}) matching the system bus clock. The reading logic was transferred into the timer callback function:
+
+\begin{lstlisting}[language=C, caption={Non-blocking line sensor sampling within TIM6 callback.}, label={lst:ex4_timer}]
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    HAL_StatusTypeDef status;
+    if (htim->Instance == TIM6)
+    {
+        status = HAL_I2C_Mem_Read(&hi2c1, SX1509_I2C_ADDR1 << 1, REG_DATA_B,
+                                 1, &data_line, 1, I2C_TIMEOUT);
+        if (status != HAL_OK)
+            printf("I2C communication error (%X).\n", status);
+        else
+            printf("Data line: %d\n", data_line);
+    }
+}
+\end{lstlisting}
+
+\subsection{Exercise 5: Keypad-Controlled LED Frequency Blinking}
+Exercise 5 requires dynamically modifying the toggle frequency of an LED connected to \texttt{PE5} based on user input from the keypad. Two approaches were explored:
+
+\subsubsection{1. Direct Switch-Case Mapping (Standard Approach)}
+Numeric keys \texttt{'1'} through \texttt{'9'} directly map to predefined blinking period values in milliseconds ($T = \frac{1000}{N}\text{ ms}$).
+
+\subsubsection{2. Dynamic Multi-Digit Buffer Parsing (Bonus Approach)}
+Keypresses are accumulated into a character string buffer until the enter key (\texttt{'\#'}) is pressed. The accumulated string is parsed using \texttt{atoi()} to calculate the precise period $T_{\text{toggle}} = \frac{1000.0}{f_{\text{target}}}\text{ ms}$.
+
+\begin{lstlisting}[language=C, caption={Dynamic string parsing logic for custom frequency entry.}, label={lst:ex5_hard}]
+char mode = keypadLayout[row][col];
+
+if (mode >= '0' && mode <= '9') {
+    if (counter < SIZE - 1) {
+        input[counter] = mode;
+        counter++;
+        input[counter] = '\0';
+    }
+}
+else if (mode == '#') {
+    if (counter > 0) {
+        int number = atoi(input);
+        if (number > 0) {
+            frequency = 1000.0 / number;
+        }
+        counter = 0;
+        input[0] = '\0';
+    }
+} else {
+    frequency = 1000;
+}
+\end{lstlisting}
+
+The main execution loop continuously toggles pin \texttt{PE5} using the dynamic \texttt{frequency} variable:
+
+\begin{lstlisting}[language=C, caption={Main loop LED toggling using dynamic delay.}, label={lst:ex5_toggle}]
+while (1)
+{
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
+    HAL_Delay(frequency);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_RESET);
+    HAL_Delay(frequency);
+}
+\end{lstlisting}
+
+% IMAGE INSTRUCTION: Insert an oscilloscope trace or logic analyzer plot showing PE5 square wave.
+% Place your image at: figures/led_waveform_oscilloscope.png
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/led_waveform_oscilloscope.png}
+    \caption{Oscilloscope waveform of pin \texttt{PE5} showing square-wave output frequency changing dynamically upon entering numeric sequences on the keypad.}
+    \label{fig:led_waveform_oscilloscope}
+\end{figure}
+
+---
+
+\section{Results and Discussion}
+The practical implementation demonstrated the efficiency and reliability of $\text{I}^2\text{C}$ serial expanders when interfacing multiple peripherals with an embedded processor. 
+
+Key results include:
+\begin{enumerate}
+    \item \textbf{Interrupt Re-arming:} Reading both \texttt{REG\_KEY\_DATA\_1} and \texttt{REG\_KEY\_DATA\_2} inside the EXTI callback correctly de-asserted the \texttt{NINT} signal on pin \texttt{PF4}, allowing subsequent keypresses to trigger external interrupts seamlessly.
+    \item \textbf{Polling vs. Interrupt Performance:} Transitioning line sensor readout from main loop polling (Exercise 3) to \texttt{TIM6} timer interrupts (Exercise 4) eliminated software blocking delays, enabling real-time background execution without missing sensor updates.
+    \item \textbf{Dynamic Control Flexibility:} The dynamic buffer parser successfully converted keypad character sequences into exact millisecond delay periods, giving full user control over system behavior.
+\end{enumerate}
+
+---
+
+\section{Conclusion}
+Laboratory 1 provided key hands-on experience in configuring serial $\text{I}^2\text{C}$ communication, handling multi-slave bus architectures, managing external GPIO hardware interrupts, and utilizing timer interrupts for non-blocking sensor sampling. The developed concepts lay the foundation for subsequent real-time control labs involving complex motor actuation and closed-loop control algorithms.
