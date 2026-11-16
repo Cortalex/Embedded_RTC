@@ -51,15 +51,14 @@ yf = filter(numF, denF, y);
 
 %% === Plot the signals ===
 figure('Color', 'w'); % White background
-plot(t, y, 'Color', 'g', 'LineWidth', 1.8); hold on;
+plot(t, y, 'Color', [0.65 0.65 0.65], 'LineWidth', 1.2); hold on;
 plot(t, yf, 'b', 'LineWidth', 1.8);
-%plot(t, y_true, 'r--', 'LineWidth', 1.2);
 
 grid on
 xlabel('Time [s]', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Amplitude', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel('Angular Speed [rpm]', 'FontSize', 12, 'FontWeight', 'bold');
 title(sprintf('Low-pass Filtering (f_c = %.1f Hz, T_s = %.3f s)', fc, Ts), ...
       'FontSize', 14, 'FontWeight', 'bold');
-legend({'Noisy signal', 'Filtered signal', 'True signal'}, ...
+legend({'Raw signal', 'Filtered signal'}, ...
        'Location', 'best', 'FontSize', 11);
 set(gca, 'FontSize', 11, 'LineWidth', 1.2);
