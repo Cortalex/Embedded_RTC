@@ -8,9 +8,9 @@ Ts = 0.01;       % Sampling period [s]
 
 %% === Extract signals from data ===
 t = data.time - data.time(1);             % Time vector [s]
-k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to RPM
+k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to rad/s
 
-% Angular speed signals [rpm]
+% Angular speed signals [rad/s]
 y1 = data.signals{1}(1, :) * k_conversion; % Motor 1
 y2 = data.signals{1}(2, :) * k_conversion; % Motor 2
 
@@ -47,7 +47,7 @@ ax1 = subplot(2, 1, 1);
 yyaxis left
 plot(t_plot, y1_plot, '-', 'Color', [0.7 0.7 0.7], 'LineWidth', 1.0); hold on;
 plot(t_plot, y1_f_plot, '-', 'Color', [0.1 0.6 0.2], 'LineWidth', 1.8);
-ylabel('Speed \omega_1 [rpm]', 'FontWeight', 'bold');
+ylabel('Speed \omega_1 [rad/s]', 'FontWeight', 'bold');
 grid on;
 
 yyaxis right
@@ -64,7 +64,7 @@ ax2 = subplot(2, 1, 2);
 yyaxis left
 plot(t_plot, y2_plot, '-', 'Color', [0.7 0.7 0.7], 'LineWidth', 1.0); hold on;
 plot(t_plot, y2_f_plot, '-', 'Color', [0 0.45 0.74], 'LineWidth', 1.8);
-ylabel('Speed \omega_2 [rpm]', 'FontWeight', 'bold');
+ylabel('Speed \omega_2 [rad/s]', 'FontWeight', 'bold');
 xlabel('Time [s]', 'FontSize', 11, 'FontWeight', 'bold');
 grid on;
 

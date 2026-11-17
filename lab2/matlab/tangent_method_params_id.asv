@@ -1,0 +1,85 @@
+%% === Extract signals from data ===
+t = data.time - data.time(1);             % Time vector [s]
+k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to rad/s
+
+% Angular speed signals [rpm]
+w1 = data.signals{1}(1, :) * k_conversion; % Motor 1
+w2 = data.signals{1}(2, :) * k_conversion; % Motor 2
+
+% Applied control voltages [V]
+u1 = data.signals{2}(1, :);               % Motor 1
+u2 = data.signals{2}(2, :);               % Motor 2
+
+%% === Low-pass filter design (continuous -> discrete via Tustin) ===
+
+% === Filter parameters ===
+fc = 0.7;        % Cutoff frequency [Hz]
+Ts = 0.01;       % Sampling period [s]
+
+sysF = tf(2*pi*fc, [1, 2*pi*fc]);
+sysF_d = c2d(sysF, Ts, 'tustin');
+[numF, denF] = tfdata(sysF_d, 'v');
+
+% === Filter the speed signals ===
+w1 = filter(numF, denF, w1);
+w2 = filter(numF, denF, w2);
+
+%% start evaluating the mean from t = 4
+
+t_start = 4.0;
+t_end = t(end) -1.0;
+
+idx_regime = (t >= t_start) & (t <= t_end);
+
+w1_regime = mean(w1(idx_regime))
+w2_regime = mean(w2(idx_regime))
+
+u1_regime = mean(u1(idx_regime))
+u2_regime = mean(u2(idx_regime))
+
+
+% computing μ 
+
+mu1 = w1_regime / u1_regime
+mu2 = w2_regime / u2_regime
+
+%% Evaluating using the Tangent Method
+
+w1_dot = zeros(1, 201);
+w2_dot = zeros(1, 201);
+
+% 201 * Ts -> 2.0 seconds
+for k = 1:201
+    % computing the derivative
+    w1_dot(k) = (w1(k+1) - w1(k))/(t(k+1)-t(k));
+    w2_dot(k) = (w2(k+1) - w2(k))/(t(k+1)-t(k));
+end
+
+[w1_dot_max, idx1_max] = max(w1_dot);
+[w2_dot_max, idx2_max] = max(w2_dot);
+
+t1_max = t(idx1_max);
+t2_max = t(idx2_max);
+
+% drawing the tangent y = mx + q
+
+tan1 = zeros(1, length(t));
+tan2 = zeros(1, length(t));
+
+for t_i = 1:length(t)
+    tan1(t_i) = w1_dot_max*(t_i - t1_max) + w1(idx1_max);
+    tan2(t_i) = w2_dot_max*(t_i - t2_max) + w2(idx2_max);
+end
+
+t0_1 = t1_max - w1(t1_max)/w1_dot_max;
+t0_2 = t2_max - w2(t2_max)/w2_dot_max;
+
+t1_1 = t1_max - (w1_regime - w1(t1_max))/w1_dot_max;
+t1_2 = t2_max - (w2_regime - w2(t2_max))/w2_dot_max;
+
+tau_1 = t0_1
+T_1 = t1_1 - t0_1
+
+tau_2 = t0_2
+T_2 = t1_2 - t0_2
+

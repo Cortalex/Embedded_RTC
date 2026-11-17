@@ -56,7 +56,7 @@ plot(t, yf, 'b', 'LineWidth', 1.8);
 
 grid on
 xlabel('Time [s]', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Angular Speed [rpm]', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel('Angular Speed [rad/s]', 'FontSize', 12, 'FontWeight', 'bold');
 title(sprintf('Low-pass Filtering (f_c = %.1f Hz, T_s = %.3f s)', fc, Ts), ...
       'FontSize', 14, 'FontWeight', 'bold');
 legend({'Raw signal', 'Filtered signal'}, ...
