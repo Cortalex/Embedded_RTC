@@ -16,8 +16,11 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{tabularx}
 \usepackage{float}
 \usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{microtype}
 
 % Code Listings Configuration
 \usepackage{xcolor}
@@ -111,8 +114,10 @@
 \end{titlepage}
 
 % Table of Contents
+\pagenumbering{roman}
 \tableofcontents
 \cleardoublepage
+\pagenumbering{arabic}
 
 % Chapter Includes
 \input{chapters/lab1}
