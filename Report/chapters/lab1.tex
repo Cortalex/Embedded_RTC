@@ -2,7 +2,7 @@
 \label{chap:lab1}
 
 \section{Introduction and Objectives}
-In embedded real-time systems, microcontrollers must continuously interact with the external physical environment through sensors and with human operators through input/output peripherals. However, directly dedicating micro-controller General Purpose Input/Output (GPIO) pins to every individual sensing element or button quickly exhausts the available pin count, reduces board layout flexibility, and impairs deterministic real-time execution. To overcome these constraints, serial communication buses such as $\text{I}^2\text{C}$ (Inter-Integrated Circuit) are widely employed to multiplex dozens of digital signals onto a shared two-wire interface.
+In embedded real-time systems, microcontrollers must continuously interact with the external physical environment through sensors and with human operators through input/output peripherals. However, directly dedicating microcontroller General Purpose Input/Output (GPIO) pins to every individual sensing element or button quickly exhausts the available pin count, reduces board layout flexibility, and impairs deterministic real-time execution. To overcome these constraints, serial communication buses such as $\text{I}^2\text{C}$ (Inter-Integrated Circuit) are widely employed to multiplex dozens of digital signals onto a shared two-wire interface.
 
 The primary objective of Laboratory 1 is to achieve hands-on proficiency in low-level peripheral communication using the $\text{I}^2\text{C}$ protocol on an ARM Cortex-M7 based STM32F7 microcontroller platform. The experimental hardware consists of a mobile robot rover (Figure~\ref{fig:turtlebot_platform}) equipped with two Semtech SX1509 16-channel $\text{I}^2\text{C}$ GPIO expanders sharing the primary hardware bus (\texttt{I2C1}):
 \begin{itemize}[noitemsep,topsep=3pt]
@@ -41,15 +41,13 @@ The primary objective of Laboratory 1 is to achieve hands-on proficiency in low-
 The laboratory activity is structured into five sequential exercises:
 \begin{enumerate}[noitemsep,topsep=3pt]
     \item \textbf{Exercise 1 -- External Interrupt Service Routine (ISR):} Implementing the EXTI callback for pin \texttt{PF4} to detect keypresses and performing the required register read sequence on \texttt{SX1509\_2} to de-assert the interrupt latch.
-    \item \textbf{Exercise 2 -- Keypad Matrix Decoding:} Decoding raw column and row bitmask values into matrix coordinates and resolving the pressed alphanumeric characters via a 2D lookup table.
-    \item \textbf{Exercise 3 -- Line Sensor Polling:} Designing a periodic polling routine in the main execution thread to sample the 8-bit line sensor bitmask with a period of $100\text{ ms}$.
+    \item \textbf{Exercise 2 -- Keypad Matrix Decoding:} Decoding raw column and row bitmask values into matrix coordinates and resolving the pressed alphanumeric characters via a 2D lookup table calibrated against physical rover routing.
+    \item \textbf{Exercise 3 -- Line Sensor Polling:} Designing a periodic polling routine in the main execution thread to sample the 8-bit line sensor bitmask with a nominal period of $100\text{ ms}$.
     \item \textbf{Exercise 4 -- Timer-Driven Non-Blocking Sampling:} Replacing software polling with hardware timer \texttt{TIM6} update interrupts, configuring prescaler and auto-reload values to achieve deterministic $10\text{ Hz}$ non-blocking telemetry.
-    \item \textbf{Exercise 5 -- Dynamic Frequency Actuation:} Modulating the blinking frequency of an external LED on pin \texttt{PE5} through keypad inputs, evaluating both direct static key-to-frequency mapping and dynamic multi-digit ASCII string parsing.
+    \item \textbf{Exercise 5 -- Dynamic Frequency Actuation:} Modulating the blinking frequency of an external LED on pin \texttt{PE5} through keypad inputs, evaluating both direct static key-to-frequency mapping and dynamic multi-digit ASCII string parsing with execute delimiters.
 \end{enumerate}
 
-Real-time diagnostic telemetry and register outputs were monitored using the ARM CoreSight Single Wire Output (SWO) Instrumentation Trace Macrocell (ITM), redirected through a custom implementation of the standard \texttt{\_write()} system call.
-
----
+Real-time diagnostic telemetry and register outputs were monitored using the ARM CoreSight Single Wire Output (SWO) Instrumentation Trace Macrocell (ITM), redirected through a custom implementation of the low-level \texttt{\_write()} system call.
 
 \section{Problem Analysis and Design Decisions}
 
@@ -77,8 +75,6 @@ The two peripherals exhibit contrasting operational dynamics:
 
 \subsection{Interrupt Latching and Deadlock Prevention}
 A crucial architectural feature of the SX1509 keypad engine is its internal interrupt latch. When a key is actuated, the open-drain \texttt{NINT} line transitions to logic low and remains asserted until both the column register (\texttt{REG\_KEY\_DATA\_1}, \texttt{0x27}) and the row register (\texttt{REG\_KEY\_DATA\_2}, \texttt{0x28}) are fully read by the host over $\text{I}^2\text{C}$. If the microcontroller acknowledges the EXTI interrupt without executing these read transactions, the physical line remains at $0\text{ V}$, preventing subsequent falling edges and causing permanent input deadlock.
-
----
 
 \section{Relevant Theoretical Background and System Architecture}
 
@@ -219,7 +215,11 @@ Upon detecting a valid keypress, the SX1509 triggers the active-low open-drain \
 \subsection{STM32 Nested Vectored Interrupt Controller and EXTI Architecture}
 The STM32F7 Nested Vectored Interrupt Controller (NVIC) manages peripheral interrupt priorities and execution vectors. External GPIO pin events are handled by the External Interrupt/Event Controller (EXTI). Pin \texttt{PF4} is multiplexed onto EXTI Line 4. The EXTI edge-detection block was configured for \textit{Falling Edge Trigger Mode} with internal pull-up and pull-down resistors disabled (relying on the external pull-up of the open-drain \texttt{NINT} line).
 
-When a falling edge occurs on \texttt{PF4}, the hardware interrupt dispatcher invokes \texttt{EXTI4\_IRQHandler()}, which calls the HAL driver dispatch routine \texttt{HAL\_GPIO\_EXTI\_IRQHandler(GPIO\_PIN\_4)}. This function clears the EXTI pending bit in hardware and executes the weak-aliased user callback:
+When a falling edge occurs on \texttt{PF4}, the NVIC executes \texttt{EXTI4\_IRQHandler()}, triggering the HAL dispatch routine:
+\begin{center}
+\texttt{HAL\_GPIO\_EXTI\_IRQHandler(GPIO\_PIN\_4)}
+\end{center}
+This function clears the EXTI pending bit in hardware and executes the weak-aliased user callback:
 \begin{lstlisting}[language=C]
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 \end{lstlisting}
@@ -253,9 +253,16 @@ int _write(int file, char *ptr, int len)
 }
 \end{lstlisting}
 
----
-
 \section{Code Structure and Implementation Choices}
+
+\subsection{Development Environment and Diagnostic Toolchain}
+The implementation and testing of Laboratory 1 relied on a professional embedded engineering toolchain:
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item \textbf{STM32CubeIDE (v1.8+):} The primary integrated development environment based on Eclipse, providing the GNU ARM Embedded Toolchain (\texttt{arm-none-eabi-gcc}), automated build pipelines, and GDB-based debugging support.
+    \item \textbf{STM32CubeMX:} Graphical peripheral and clock tree configuration tool. Used to configure PLL clock multipliers ($f_{\text{SYSCLK}} = 96\text{ MHz}$, $f_{\text{PCLK1}} = 48\text{ MHz}$), pin multiplexing (setting \texttt{PF4} as external falling-edge interrupt and \texttt{PE5} as push-pull output), and initializing \texttt{TIM6} basic timer parameters.
+    \item \textbf{Serial Wire Viewer (SWV) ITM Data Console:} Hardware trace utility embedded within ARM CoreSight debug infrastructure. Enabled via Stimulus Port 0 to display high-speed real-time \texttt{printf()} diagnostic telemetry without imposing intrusive UART transmission delays.
+    \item \textbf{Digital Oscilloscope / Logic Analyzer:} Utilized to verify physical pin states, capturing the falling edges on \texttt{PF4} generated by the SX1509 expander, inspecting $\text{I}^2\text{C}$ clock/data handshakes, and measuring the modulated output frequency on LED pin \texttt{PE5}.
+\end{itemize}
 
 \subsection{Software Architecture Overview}
 The software architecture was designed to cleanly separate hardware initialization, asynchronous interrupt handling, deterministic periodic sampling, and foreground user-interface logic. The complete application source code is divided across two reference implementations in the repository:
@@ -369,31 +376,32 @@ Table~\ref{tab:keypad_truth_table} summarizes the complete decoding truth table 
 
 \begin{table}[htbp]
     \centering
+    \small
     \caption{Keypad Matrix Register Decoding Truth Table experimentally verified on the rover.}
     \label{tab:keypad_truth_table}
     \begin{tabular}{cccccc}
         \toprule
-        \textbf{Key} & \textbf{REG\_KEY\_DATA\_1 (Hex)} & \textbf{REG\_KEY\_DATA\_2 (Hex)} & \textbf{Col Index} & \textbf{Row Index} & \textbf{Dec Values (Col, Row)} \\
+        \textbf{Key} & \textbf{Col Reg (\texttt{0x27})} & \textbf{Row Reg (\texttt{0x28})} & \textbf{Col ($c$)} & \textbf{Row ($r$)} & \textbf{Dec Pair ($d_1, d_2$)} \\
         \midrule
-        \texttt{*} & \texttt{0xFE} & \texttt{0xFE} & 0 & 0 & (254, 254) \\
-        \texttt{0} & \texttt{0xFD} & \texttt{0xFE} & 1 & 0 & (253, 254) \\
-        \texttt{\#} & \texttt{0xFB} & \texttt{0xFE} & 2 & 0 & (251, 254) \\
-        \texttt{D} & \texttt{0xF7} & \texttt{0xFE} & 3 & 0 & (247, 254) \\
+        \texttt{*} & \texttt{0xFE} / 254 & \texttt{0xFE} / 254 & 0 & 0 & (254, 254) \\
+        \texttt{0} & \texttt{0xFD} / 253 & \texttt{0xFE} / 254 & 1 & 0 & (253, 254) \\
+        \texttt{\#} & \texttt{0xFB} / 251 & \texttt{0xFE} / 254 & 2 & 0 & (251, 254) \\
+        \texttt{D} & \texttt{0xF7} / 247 & \texttt{0xFE} / 254 & 3 & 0 & (247, 254) \\
         \midrule
-        \texttt{7} & \texttt{0xFE} & \texttt{0xFD} & 0 & 1 & (254, 253) \\
-        \texttt{8} & \texttt{0xFD} & \texttt{0xFD} & 1 & 1 & (253, 253) \\
-        \texttt{9} & \texttt{0xFB} & \texttt{0xFD} & 2 & 1 & (251, 253) \\
-        \texttt{C} & \texttt{0xF7} & \texttt{0xFD} & 3 & 1 & (247, 253) \\
+        \texttt{7} & \texttt{0xFE} / 254 & \texttt{0xFD} / 253 & 0 & 1 & (254, 253) \\
+        \texttt{8} & \texttt{0xFD} / 253 & \texttt{0xFD} / 253 & 1 & 1 & (253, 253) \\
+        \texttt{9} & \texttt{0xFB} / 251 & \texttt{0xFD} / 253 & 2 & 1 & (251, 253) \\
+        \texttt{C} & \texttt{0xF7} / 247 & \texttt{0xFD} / 253 & 3 & 1 & (247, 253) \\
         \midrule
-        \texttt{4} & \texttt{0xFE} & \texttt{0xFB} & 0 & 2 & (254, 251) \\
-        \texttt{5} & \texttt{0xFD} & \texttt{0xFB} & 1 & 2 & (253, 251) \\
-        \texttt{6} & \texttt{0xFB} & \texttt{0xFB} & 2 & 2 & (251, 251) \\
-        \texttt{B} & \texttt{0xF7} & \texttt{0xFB} & 3 & 2 & (247, 251) \\
+        \texttt{4} & \texttt{0xFE} / 254 & \texttt{0xFB} / 251 & 0 & 2 & (254, 251) \\
+        \texttt{5} & \texttt{0xFD} / 253 & \texttt{0xFB} / 251 & 1 & 2 & (253, 251) \\
+        \texttt{6} & \texttt{0xFB} / 251 & \texttt{0xFB} / 251 & 2 & 2 & (251, 251) \\
+        \texttt{B} & \texttt{0xF7} / 247 & \texttt{0xFB} / 251 & 3 & 2 & (247, 251) \\
         \midrule
-        \texttt{1} & \texttt{0xFE} & \texttt{0xF7} & 0 & 3 & (254, 247) \\
-        \texttt{2} & \texttt{0xFD} & \texttt{0xF7} & 1 & 3 & (253, 247) \\
-        \texttt{3} & \texttt{0xFB} & \texttt{0xF7} & 2 & 3 & (251, 247) \\
-        \texttt{A} & \texttt{0xF7} & \texttt{0xF7} & 3 & 3 & (247, 247) \\
+        \texttt{1} & \texttt{0xFE} / 254 & \texttt{0xF7} / 247 & 0 & 3 & (254, 247) \\
+        \texttt{2} & \texttt{0xFD} / 253 & \texttt{0xF7} / 247 & 1 & 3 & (253, 247) \\
+        \texttt{3} & \texttt{0xFB} / 251 & \texttt{0xF7} / 247 & 2 & 3 & (251, 247) \\
+        \texttt{A} & \texttt{0xF7} / 247 & \texttt{0xF7} / 247 & 3 & 3 & (247, 247) \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -622,8 +630,6 @@ while (1)
     \label{fig:led_waveform_oscilloscope}
 \end{figure}
 
----
-
 \section{Controller Design Considerations}
 In Laboratory 1, an explicit closed-loop feedback controller (such as a PID velocity regulator or lateral steering controller) was not implemented, as this initial session focused strictly on low-level peripheral driver integration, serial bus communication, and asynchronous event scheduling.
 
@@ -632,8 +638,6 @@ However, the hardware abstractions and timing architectures established in this 
     \item \textbf{Sensor Feedback for Lateral Control (Laboratory 4):} The line sensor bitmask readout developed in Exercises 3 and 4 constitutes the primary feedback plant observation $D_{\text{byte}}$ for line following. The spatial centroid equation (Equation~\ref{eq:centroid}) converts this raw bitmask into lateral error $e(t) = x_{\text{ref}} - x_{\text{line}}(t)$, which directly drives the steering controller.
     \item \textbf{Deterministic Sampling for Discrete-Time Control (Laboratories 2 \& 3):} Digital controllers rely fundamentally on strictly periodic sampling intervals $T_s$. Migrating from software polling to the hardware timer architecture of \texttt{TIM6} demonstrated the exact mechanism required to execute discrete-time difference equations $u[k] = u[k-1] + q_0 e[k] + q_1 e[k-1]$ without CPU jitter.
 \end{itemize}
-
----
 
 \section{Experimental Results and Discussion}
 
@@ -747,16 +751,17 @@ Table~\ref{tab:linesensor_analysis} summarizes the binary decoding and physical 
 
 \begin{table}[htbp]
     \centering
+    \small
     \caption{Line Sensor Telemetry Decomposition and Centroid Position Calculation.}
     \label{tab:linesensor_analysis}
     \begin{tabular}{ccccc}
         \toprule
-        \textbf{Decimal Value} & \textbf{Binary Bitmask ($b_7 \dots b_0$)} & \textbf{Active Elements} & \textbf{Centroid Position $x_{\text{line}}$} & \textbf{Lateral Deviation} \\
+        \textbf{Dec} & \textbf{Bitmask ($b_7 \dots b_0$)} & \textbf{Active Elements} & \textbf{Centroid ($x_{\text{line}}$)} & \textbf{Lateral Deviation} \\
         \midrule
         7   & \texttt{0000 0111} & Elements 0, 1, 2 & $-20.0\text{ mm}$ & Large Left Offset \\
         14  & \texttt{0000 1110} & Elements 1, 2, 3 & $-12.0\text{ mm}$ & Moderate Left Offset \\
-        28  & \texttt{0001 1100} & Elements 2, 3, 4 & $-4.0\text{ mm}$  & Near Centered \\
-        56  & \texttt{0011 1000} & Elements 3, 4, 5 & $+4.0\text{ mm}$  & Near Centered \\
+        28  & \texttt{0001 1100} & Elements 2, 3, 4 & $-4.0\text{ mm}$  & Centered Tracking \\
+        56  & \texttt{0011 1000} & Elements 3, 4, 5 & $+4.0\text{ mm}$  & Centered Tracking \\
         112 & \texttt{0111 0000} & Elements 4, 5, 6 & $+12.0\text{ mm}$ & Moderate Right Offset \\
         \bottomrule
     \end{tabular}
@@ -767,23 +772,22 @@ Table~\ref{tab:polling_vs_timer} provides a technical comparison between the sof
 
 \begin{table}[htbp]
     \centering
+    \small
     \caption{Architectural Comparison: Synchronous Polling vs. Timer-Driven Interrupt.}
     \label{tab:polling_vs_timer}
-    \begin{tabular}{lcc}
+    \begin{tabularx}{\textwidth}{p{4.2cm} X X}
         \toprule
-        \textbf{Metric / Attribute} & \textbf{Exercise 3: Software Polling} & \textbf{Exercise 4: Hardware Timer (TIM6)} \\
+        \textbf{Metric / Attribute} & \textbf{Exercise 3: Software Polling} & \textbf{Exercise 4: Hardware Timer (\texttt{TIM6})} \\
         \midrule
-        \textbf{Sampling Period ($T_s$)} & $100\text{ ms}$ (Nominal) & $100.0\text{ ms}$ (Exact) \\
+        \textbf{Sampling Period ($T_s$)} & $100\text{ ms}$ (Nominal) & $100.0\text{ ms}$ (Deterministic) \\
         \textbf{CPU Execution Mode} & Blocking (\texttt{HAL\_Delay}) & Non-blocking (Asynchronous ISR) \\
-        \textbf{Foreground CPU Availability} & $< 1\%$ (Stalled in spinlock) & $> 99.8\%$ (Free for control algorithms) \\
-        \textbf{Sampling Period Jitter} & High ($\pm 5\text{ ms}$ under load) & Negligible ($< 0.1\ \mu\text{s}$, hardware clock) \\
+        \textbf{Foreground CPU Free} & $< 1\%$ (Stalled in spinlock) & $> 99.8\%$ (Available for control) \\
+        \textbf{Sampling Period Jitter} & High ($\pm 5\text{ ms}$ under load) & Negligible ($< 0.1\ \mu\text{s}$, timer clock) \\
         \textbf{Determinism} & Poor & Strict Hard Real-Time \\
-        \textbf{Concurrent Task Execution} & Blocked & Fully Supported \\
+        \textbf{Concurrent Execution} & Blocked & Fully Supported \\
         \bottomrule
-    \end{tabular}
+    \end{tabularx}
 \end{table}
-
----
 
 \section{Issues Encountered, Workarounds, and Lessons Learned}
 
@@ -794,7 +798,7 @@ Throughout the design, implementation, and physical testing phases, several tech
     \begin{itemize}[noitemsep,topsep=2pt]
         \item \textit{Symptom:} The keypad successfully triggered an external interrupt on the very first keypress, but all subsequent keypresses were completely ignored by the microcontroller.
         \item \textit{Root Cause Analysis:} The Semtech SX1509 keypad engine utilizes an active-low open-drain \texttt{NINT} latch. The hardware comparator latches the interrupt low upon switch contact and will not release the line until \textit{both} the column register (\texttt{REG\_KEY\_DATA\_1}) and the row register (\texttt{REG\_KEY\_DATA\_2}) are retrieved over $\text{I}^2\text{C}$. In our initial test code, only \texttt{REG\_KEY\_DATA\_1} was read inside the ISR. Consequently, \texttt{NINT} remained permanently asserted at $0\text{ V}$, preventing the EXTI falling-edge detector on pin \texttt{PF4} from registering subsequent transitions.
-        \item \textit{Workaround:} Sequential $\text{I}^2\text{C}$ read operations for both registers were added to \texttt{HAL\_GPIO\_EXTI\_Callback()}, successfully releasing the latch and restoring continuous interrupt operation.
+        \item \textit{Workaround:} Sequential $\text{I}^2\text{C}$ read transactions for both column and row registers were incorporated inside \texttt{HAL\_GPIO\_EXTI\_Callback()}, successfully clearing the hardware latch and restoring continuous interrupt reception.
     \end{itemize}
 
     \item \textbf{Issue: Physical Matrix Orientation Inversion.}
@@ -825,15 +829,13 @@ Throughout the design, implementation, and physical testing phases, several tech
     \end{itemize}
 \end{enumerate}
 
----
-
 \section{Conclusions}
 Laboratory 1 successfully accomplished all pedagogical and technical objectives regarding low-level peripheral integration on the STM32F7 embedded microcontroller:
 \begin{itemize}[noitemsep,topsep=3pt]
     \item \textbf{Serial Protocol Mastery:} Configured and validated multi-slave communication over a shared $\text{I}^2\text{C}1$ serial bus, handling 7-bit device addressing, memory register addressing, and bus timing constraints.
     \item \textbf{Asynchronous Event Handling:} Implemented external GPIO hardware interrupts (\texttt{EXTI4}) to process sporadic human input with zero CPU idle overhead, solving the hardware latching mechanism of the SX1509 expander.
     \item \textbf{Deterministic Real-Time Scheduling:} Migrated line sensor acquisition from CPU-blocking software polling to non-blocking hardware timer update interrupts (\texttt{TIM6}), restoring $99.8\%$ of CPU execution bandwidth to the foreground thread.
-    \item \textbf{Dynamic Actuation & Calibration:} Implemented both static mapping and dynamic multi-digit ASCII parsing to control LED blinking frequency on pin \texttt{PE5}, while empirically calibrating the physical keypad coordinate layout against hardware discrepancies.
+    \item \textbf{Dynamic Actuation \& Calibration:} Implemented both static mapping and dynamic multi-digit ASCII parsing to control LED blinking frequency on pin \texttt{PE5}, while empirically calibrating the physical keypad coordinate layout against hardware discrepancies.
 \end{itemize}
 
 The peripheral drivers, interrupt structures, and telemetry pipelines developed during this laboratory establish the core framework for the system identification, motor velocity modeling, and closed-loop steering controllers implemented in subsequent laboratories.

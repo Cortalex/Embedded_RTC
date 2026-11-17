@@ -62,12 +62,14 @@
     citecolor=codegreen,
     urlcolor=codeblue,
     pdftitle={Embedded Real-Time Control Laboratory Report},
-    pdfauthor={Student Report}
+    pdfauthor={Student Report},
+    plainpages=false
 }
 
 \begin{document}
 
 % Title Page
+\hypersetup{pageanchor=false}
 \begin{titlepage}
     \centering
     \vspace*{1cm}
@@ -80,12 +82,8 @@
     
     \vspace{2cm}
     
-    % Logo Placeholder
-    % IMAGE INSTRUCTION: Place the University logo image at figures/unipd-logo.png
-    \begin{figure}[htbp]
-        \centering
-        \includegraphics[width=6cm]{figures/unipd-logo.png}
-    \end{figure}
+    % Logo
+    \includegraphics[width=6cm]{figures/unipd-logo.png}\par
     
     \vspace{1.5cm}
     
@@ -112,6 +110,7 @@
 
     \vspace{1cm}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 
 % Table of Contents
 \pagenumbering{roman}
