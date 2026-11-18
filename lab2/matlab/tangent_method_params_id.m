@@ -72,8 +72,8 @@ tan1 = zeros(1, length(t));
 tan2 = zeros(1, length(t));
 
 for t_i = 1:length(t)
-    tan1(t_i) = w1_dot_max*(t_i - t1_max) + w1(idx1_max);
-    tan2(t_i) = w2_dot_max*(t_i - t2_max) + w2(idx2_max);
+    tan1(t_i) = w1_dot_max*(t(t_i) - t1_max) + w1(idx1_max);
+    tan2(t_i) = w2_dot_max*(t(t_i) - t2_max) + w2(idx2_max);
 end
 
 % step 7
@@ -81,8 +81,8 @@ t0_1 = t1_max - w1(idx1_max)/w1_dot_max;
 t0_2 = t2_max - w2(idx2_max)/w2_dot_max;
 
 % step 8
-t1_1 = t1_max - (w1_regime - w1(idx1_max))/w1_dot_max;
-t1_2 = t2_max - (w2_regime - w2(idx2_max))/w2_dot_max;
+t1_1 = t1_max + (w1_regime - w1(idx1_max))/w1_dot_max;
+t1_2 = t2_max + (w2_regime - w2(idx2_max))/w2_dot_max;
 
 % step 9 
 tau_1 = t0_1
@@ -91,3 +91,6 @@ T_1 = t1_1 - t0_1
 tau_2 = t0_2
 T_2 = t1_2 - t0_2
 
+% earlier, i could not get why we have a delay considering our values start
+% from the very t(1) (t(2) for w2). The delay actually comes from the
+% filter.
