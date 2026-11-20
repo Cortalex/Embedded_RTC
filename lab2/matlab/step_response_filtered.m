@@ -3,7 +3,7 @@
 %clc
 
 %% === Filter parameters ===
-fc = 0.7;        % Cutoff frequency [Hz]
+fc = 2.0;        % Cutoff frequency [Hz]
 Ts = 0.01;       % Sampling period [s]
 
 %% === Extract signals from data ===

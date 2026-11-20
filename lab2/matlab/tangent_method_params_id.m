@@ -15,7 +15,7 @@ u2 = data.signals{2}(2, :);               % Motor 2
 %% === Low-pass filter design (continuous -> discrete via Tustin) ===
 
 % === Filter parameters ===
-fc = 0.7;        % Cutoff frequency [Hz]
+fc = 2.5;        % Cutoff frequency [Hz]
 
 
 sysF = tf(2*pi*fc, [1, 2*pi*fc]);
@@ -93,6 +93,50 @@ T_1 = t1_1 - t0_1
 tau_2 = t0_2
 T_2 = t1_2 - t0_2
 
-% earlier, i could not get why we have a delay considering our values start
-% from the very t(1) (t(2) for w2). The delay actually comes from the
-% filter.
+%% Compute PI controller gains
+% Ziegler - Nichols method
+Kp1 = (0.9 * T_1)/ (mu1 * tau_1)
+Kp2 = (0.9 * T_2)/ (mu2 * tau_2)
+
+Ki1 = Kp1/(3 * tau_1)
+Ki2 = Kp2/(3 * tau_2)
+
+%% === Plot ===
+figure('Color', 'w', 'Name', 'Tangent Method Parameter Identification', 'Position', [100, 100, 950, 700]);
+
+% --- SUBPLOT 1: Motor 1 ---
+subplot(2, 1, 1);
+plot(t, w1, 'b', 'LineWidth', 1.8); hold on;
+% Tangente tra t0 (asse x) e t1 (valore a regime) come nelle slide
+plot([t0_1, t1_1], [0, w1_regime], 'g--', 'LineWidth', 2.0);
+% Linea orizzontale del regime
+yline(w1_regime, 'k--', sprintf('y_\\infty = %.2f rad/s', w1_regime), 'LineWidth', 1.2);
+% Punto di flesso (massima pendenza)
+plot(t1_max, w1(idx1_max), 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 6);
+xline(t1_max, 'k:', 'Inflection Point', 'LineWidth', 1.0);
+% Linee verticali per tau (t0) e t1
+xline(t0_1, 'r--', sprintf('\\tau = %.3f s', tau_1), 'LineWidth', 1.2);
+xline(t1_1, 'm--', sprintf('t_1 = %.3f s', t1_1), 'LineWidth', 1.2);
+grid on;
+xlim([0, 2.5]);
+ylim([0, w1_regime * 1.15]);
+ylabel('\omega_1 [rad/s]', 'FontWeight', 'bold');
+title(sprintf('Motor 1 (Tangent Method): \\tau = %.3f s,  T = %.3f s,  \\mu = %.2f rad/(s\\cdot V)', tau_1, T_1, mu1), 'FontSize', 11, 'FontWeight', 'bold');
+legend({'Filtered speed y(t)', 'Tangent line', 'Inflection point'}, 'Location', 'southeast');
+
+% --- SUBPLOT 2: Motor 2 ---
+subplot(2, 1, 2);
+plot(t, w2, 'Color', [0 0.45 0.74], 'LineWidth', 1.8); hold on;
+plot([t0_2, t1_2], [0, w2_regime], 'g--', 'LineWidth', 2.0);
+yline(w2_regime, 'k--', sprintf('y_\\infty = %.2f rad/s', w2_regime), 'LineWidth', 1.2);
+plot(t2_max, w2(idx2_max), 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 6);
+xline(t2_max, 'k:', 'Inflection Point', 'LineWidth', 1.0);
+xline(t0_2, 'r--', sprintf('\\tau = %.3f s', tau_2), 'LineWidth', 1.2);
+xline(t1_2, 'm--', sprintf('t_1 = %.3f s', t1_2), 'LineWidth', 1.2);
+grid on;
+xlim([0, 2.5]);
+ylim([0, w2_regime * 1.15]);
+xlabel('Time [s]', 'FontWeight', 'bold');
+ylabel('\omega_2 [rad/s]', 'FontWeight', 'bold');
+title(sprintf('Motor 2 (Tangent Method): \\tau = %.3f s,  T = %.3f s,  \\mu = %.2f rad/(s\\cdot V)', tau_2, T_2, mu2), 'FontSize', 11, 'FontWeight', 'bold');
+legend({'Filtered speed y(t)', 'Tangent line', 'Inflection point'}, 'Location', 'southeast');
