@@ -1,11 +1,11 @@
 %% === Extract signals from data ===
 Ts = 0.01;       % Sampling period [s]
 t = data.time - data.time(1);             % Time vector [s]
-k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to rad/s
+
 
 % Angular speed signals [rpm]
-w1 = data.signals{1}(1, :) * k_conversion; % Motor 1
-w2 = data.signals{1}(2, :) * k_conversion; % Motor 2
+w1 = data.signals{1}(1, :); %* k_conversion; % Motor 1
+w2 = data.signals{1}(2, :); %* k_conversion; % Motor 2
 
 % Applied control voltages [V]
 u1 = data.signals{2}(1, :);               % Motor 1
