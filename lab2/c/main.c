@@ -131,7 +131,9 @@ float speedMotor1(){
 	}
 	TIM3_PreviousCount = TIM3_CurrentCount;
 
-	return ((float)TIM3_DiffCount) * RPM2RADS;
+	return (((float)TIM3_DiffCount) * 2 * M_PI) / (3840 * TS);
+
+	//return ((((float)TIM3_DiffCount) * RPM2RADS) * 60) / (3840 * 0.01);
 }
 
 float speedMotor2(){
@@ -158,18 +160,33 @@ float speedMotor2(){
 	}
 	TIM4_PreviousCount = TIM4_CurrentCount;
 
-	 return (float)TIM4_DiffCount * RPM2RADS;
+	return (((float)TIM4_DiffCount) * 2 * M_PI) / (3840 * TS);
 }
 
+/*
+void clip_voltage(float* voltage){
+	if(*voltage > 6){
+		*voltage = 6;
+	}else if(*voltage < -6 ){
+		*voltage = -6;
+	}
+}
+*/
 
 float motorControl1(float* voltage){
 	int32_t duty;
-	if(*voltage > 6){
+
+	//clip_voltage(&voltage);
+
+	if(*voltage >= 6){
 		*voltage = 6;
-		duty = (*voltage * V2DUTY);
-	}else{
-		duty = (*voltage * V2DUTY);
+	}else if(*voltage <= -6 ){
+		*voltage = -6;
 	}
+
+	duty = (*voltage * V2DUTY);
+
+
 	/* calculate duty properly */
 	if ( duty >= 0) { // rotate forward
 	/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
@@ -187,12 +204,16 @@ float motorControl1(float* voltage){
 
 float motorControl2(float* voltage){
 	int32_t duty;
-	if(*voltage > 6){
+
+	//clip_voltage(&voltage);
+	if(*voltage >= 6){
 		*voltage = 6;
-		duty = (*voltage * V2DUTY);
-	}else{
-		duty = (*voltage * V2DUTY);
+	}else if(*voltage <= -6 ){
+		*voltage = -6;
 	}
+
+	duty = (*voltage * V2DUTY);
+
 	/* calculate duty properly */
 	if ( duty >= 0) { // rotate forward
 	/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
@@ -219,7 +240,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 
 	static int kLed = 0;
-	float voltage = 5;
+	float voltage = 3;
 
 	/* Speed ctrl routine */
 	if(htim->Instance == TIM6)
