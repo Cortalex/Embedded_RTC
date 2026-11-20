@@ -1,4 +1,5 @@
 %% === Extract signals from data ===
+Ts = 0.01;       % Sampling period [s]
 t = data.time - data.time(1);             % Time vector [s]
 k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to rad/s
 
@@ -14,7 +15,6 @@ u2 = data.signals{2}(2, :);               % Motor 2
 
 % === Filter parameters ===
 fc = 0.7;        % Cutoff frequency [Hz]
-Ts = 0.01;       % Sampling period [s]
 
 sysF = tf(2*pi*fc, [1, 2*pi*fc]);
 sysF_d = c2d(sysF, Ts, 'tustin');
@@ -51,8 +51,8 @@ w2_63_2 = 0.632 * w2_regime
 
 idx_1 = find(w1 >= w1_63_2, 1, 'first');
 
-T_1;
-T_2;
+T_1 = 0.0;
+T_2 = 0.0;
 
 % checking the closest match between found idx and idx-1
 

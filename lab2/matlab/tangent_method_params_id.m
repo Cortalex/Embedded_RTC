@@ -1,6 +1,8 @@
 %% === Extract signals from data ===
 t = data.time - data.time(1);             % Time vector [s]
+Ts = 0.01;       % Sampling period [s]
 k_conversion = 60 / (3840 * Ts);         % Conversion factor from encoder ticks to rad/s
+
 
 % Angular speed signals [rpm]
 w1 = data.signals{1}(1, :) * k_conversion; % Motor 1
@@ -14,7 +16,7 @@ u2 = data.signals{2}(2, :);               % Motor 2
 
 % === Filter parameters ===
 fc = 0.7;        % Cutoff frequency [Hz]
-Ts = 0.01;       % Sampling period [s]
+
 
 sysF = tf(2*pi*fc, [1, 2*pi*fc]);
 sysF_d = c2d(sysF, Ts, 'tustin');
