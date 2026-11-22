@@ -30,3 +30,6 @@
 *.pdf
 
 Slides/
+
+## Local AI agent
+AGENTS.md
