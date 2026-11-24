@@ -1,7 +1,7 @@
-\documentclass[english]{article}
+\documentclass[english]{report}
 \usepackage[english]{babel} 
 \usepackage[T1]{fontenc}
-\usepackage[utf8x]{inputenc}
+\usepackage[utf8]{inputenc}
 \usepackage{float}
 \usepackage{graphicx}
 
@@ -14,12 +14,18 @@
 \usepackage{epstopdf}
 \usepackage{fancyhdr}
 \usepackage{booktabs,array}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue
+}
 
 \hyphenation{english}
 \makeatother
-
-\usepackage{babel}
-
 
 \usepackage{listings}
 \usepackage{xcolor} % for setting colors
@@ -72,72 +78,22 @@
 \tableofcontents
 \newpage
 
-\section{Laboratory 1}
+% Chapters inclusion
+\input{chapters/lab1.tex}
+% \input{chapters/lab2.tex}
+% \input{chapters/lab3.tex}
+% \input{chapters/lab4.tex}
+% \input{chapters/lab5.tex}
 
-In this lab ....
-
-\subsection{Relevant theoretical notions}
-
-Lorem  ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
-
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.4\textwidth]{figures/lab1/turtlebot_1.jpg}
-	\caption{The TurtleBot}
-	\label{fig:turtlebot}
-\end{figure}
-
-In Figure~\ref{fig:turtlebot} ...
-
-\begin{figure}[!ht]
-	\centering
-	\subfloat[The TurtleBot 1 ]
-	{\includegraphics[width=0.3\textwidth,height=0.45\textwidth]{figures/lab1/turtlebot_1.jpg}
-		\label{fig:tbot1}}
-	\subfloat[The TurtleBot 2]
-	{\includegraphics[width=0.3\textwidth,height=0.5\textwidth]{figures/lab1/turtlebot_2.jpg}
-		\label{fig:tbot2}}
-	\caption{The TurtleBot}
-\end{figure}
-
-\subsection{Another subsection}
-
-Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
-
-\subsection{Another subsection}
-
-\begin{lstlisting}[language=C, caption={C code using listings}, label={lst:label} ]
-#include <stdio.h>
-int main()
-{
-	// print hello to the console
-	printf("Hello, world!");
-	return 0;
-}
-\end{lstlisting}
-
-See code~\ref{lst:label}.
-
-\section{Report Lab 1}
-Ex 1
-We found out that the diagonal of the matrix of the keypad goes from '*' to 'A' instead of going from '1' to 'D'. We used the same I2C protocol for both slaves. We saved in 2 different areas of memory the values of the registers of the keypad.
-\\Ex 2
-We used the switch case because it was the fastest method to handle the situation. We worked with the indices of the matrix.
-\\Ex 3
-Same i2c line, change address for the line sensor
-\\Ex 4
-We simply used the structure of the polling to implement the interrupt. as deafult and if it's pressed a key that is not a number, we chosed to used a frequency of 1hz, a period of 1 s
-\\Ex 5
-We used the same loop of the lab0. we have the pin which turns o, delay, turns of, delay. we impement a switch case that convert what we read form the keypad into a period in milliseconds.
 \clearpage
 \appendix
 
-\section{Section in the Appendix}
+\chapter{Additional Reference Material}
 \label{sec:app1}
 
-\subsection{Subsection in the Appendix}
+\section{Hardware Schematics and Toolchain Setup}
 \label{subsec:app2}
 
-Additional relevant information...
+Additional relevant information regarding STM32F7 pin mapping, clock trees, and peripheral header definitions.
 
 \end{document}
