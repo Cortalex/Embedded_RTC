@@ -6,6 +6,12 @@
 - [x] Aggiungere check e test Volt negativi 
 - [x] Screenshot vari, con valori diversi di voltaggio
 - [x] Fare i plot per FOTFA e tangent per metterli nel report
-- [ ] Decidere metodo per scelta del voltaggio
-- [ ] Calcolare Ki e Kp
-- [ ] Open Loop su matlab e C
+- [x] Decidere metodo per scelta del voltaggio
+- [x] Calcolare Ki e Kp
+- [x] Open Loop su matlab e C
+
+- Lab3
+- [ ] keypad
+- [ ] super loop
+- [ ] plottare integrativo live
+- [ ] convertire da immagine a plot matlab
