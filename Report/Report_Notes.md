@@ -12,22 +12,22 @@ We used the same loop of the lab0. we have the pin which turns o, delay, turns o
 
 # Lab2
 ## Step 1
-Abbiamo scelto la forward/brake mode perchè così abbiamo più controllo sul nostro robot, perchè usa la slow decay mode (quindi nei primi millisecondi la corrente scende lentamente e le ruote velocemente). Inoltre ci permette di mantenere la linearità tra il voltaggio e la velocità angolare.
+Abbiamo scelto la forward/brake mode perchè così abbiamo più controllo sul nostro robot, visto che possiamo effettivamente frenare. Inoltre usare la slow decay mode (quindi nei primi millisecondi la corrente scende lentamente e le ruote rallentano velocemente) ci permette di mantenere la linearità tra il voltaggio e la velocità angolare.
 ## Step 2
-Abbiamo applicato vari voltaggi in input. Abbiamo messo un controllo che limita il voltaggio tra -6V e 6V in modo da non superare i limiti del nostro TurtleBot. Abbiamo fatto gli screen di 6V, 5V, 4V, 3V, 2V, 1V, -3V, 3.84V. Abbiamo deciso di usare la prior knowledge che ci ha fornito il prof e abbiamo usato 0.64 * 6V = 3.84V per i calcoli successivi.
+Abbiamo applicato vari voltaggi in input (6V, 5V, 4V, 3V, 2V, 1V, -3V, 3.84V) e abbiamo salvato gli screenshot e i file .mat dei segnali di input (voltaggi) e output (velocità angolari della ruota). Abbiamo messo un controllo che limita il voltaggio tra -6V e 6V in modo da non superare i limiti del nostro TurtleBot. Osservando le 2 costanti definite dal professore V2DUTY e DUTY2V abbiamo intuito che la variabile duty in realtà si riferisce al numero di tick del processore. Abbiamo deciso di usare la prior knowledge che ci ha fornito il prof e abbiamo deciso di usare 0.64 * 6V = 3.84V come tensione per i calcoli successivi.
 ## Step 3
-Abbiamo letto la velocità angolare delle 2 ruote (in realtà leggevamo dall'encoder quante rotazioni vedeva e le abbiamo convertite nella velocità angolare a cui effettivamente stavano girando le ruote)
+Abbiamo letto la velocità angolare delle 2 ruote grazie ai 2 encoder dei 2 motori. Noi in realtà leggevamo quanti impulsi vedeva l'encoder e li abbiamo convertiti nella velocità angolare a cui effettivamente stavano girando le ruote.
 ## Step 4
-Abbiamo usato il metodo 63.2% per calcolare i valori reali dei parametri del robot (mu e T). Abbiamo osservato tramite il grafico che non c'è delay tau.
+Abbiamo usato il metodo 63.2% per calcolare i valori reali dei parametri del robot (μ e T). Abbiamo osservato tramite il grafico che non c'è delay τ.
 ## Step 5
-Dopodichè abbiamo usato il metodo della tangente con un filtro iniziale (non troppo alto, nè troppo basso, noi vogliamo smussare la parte iniziale della curva, quando sta salendo, ma non vogliamo creare troppo delay) e abbiamo calcolato per entrambe le ruote mu, tau e T.
+Dopodichè abbiamo usato il metodo della tangente con un filtro iniziale. Il valore della frequenza di taglio non doveva essere nè non troppo alto (perchè sarebbe stato un filtro inutile), nè troppo basso (perchè avrebbe creato troppo delay). Il nostro obiettivo era smussare la parte iniziale della curva, quando sta salendo rapidamente, per trovare la vera pendenza massima (senza essere ingannati da del rumore) e abbiamo calcolato per entrambe le ruote μ, τ e T.
 ## Step 6
-Con i valori dei parametri che abbiamo trovato col metodo della tangente, abbiamo calcolato Kp e Ki per il nostro closed-loop per il prossimo laboratorio
+Con i valori dei parametri che abbiamo trovato col metodo della tangente, abbiamo calcolato Kp e Ki per entrambe le ruote, da usare per il closed-loop per il prossimo laboratorio.
 
 # Lab 3
 ## Step 1
-Abbiamo implementato il closed feedback loop (uno per motore) in modo che segua una reference speed. Abbiamo usato i valori di kp e ki trovati tramite il MATLAB del lab 2
+Abbiamo implementato il closed feedback loop (uno per motore) con un controllore PI in modo che segua una reference speed decisa da noi. Ne abbiamo provate varie e abbiamo salvato gli screenshot e i file .mat dei segnali di voltaggio e velocità angolare. Abbiamo usato i valori di kp e ki trovati tramite il metodo della tangente del lab 2.
 ## Step 2
-Abbiamo implementato la forward/coast e una variabile per scegliere in modo rapido se usare la forward/brake o la forward/coast. Con la forward/coast abbiamo notato che la ruota più lenta riesce a girare un po più velocemente
+Abbiamo implementato la forward/coast e tramite il valore di una variabile scegliamo in modo rapido se usare la forward/brake o la forward/coast. Con la forward/coast abbiamo notato che la ruota più lenta riesce a girare un po più velocemente (e ha senso).
 ## Step 3
-Abbiamo implementato nel closed feedback loop il blocco della saturazione (ovviamente uno per motore) per inserire l'Anti Wind-Up
+Abbiamo implementato nel closed feedback loop il blocco della saturazione (ovviamente uno per motore) per inserire l'Anti Wind-Up.
