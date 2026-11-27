@@ -25,9 +25,9 @@ Dopodichè abbiamo usato il metodo della tangente con un filtro iniziale. Il val
 Con i valori dei parametri che abbiamo trovato col metodo della tangente, abbiamo calcolato Kp e Ki per entrambe le ruote, da usare per il closed-loop per il prossimo laboratorio.
 
 # Lab 3
-## Step 1
+## Esercizio 1
 Abbiamo implementato il closed feedback loop (uno per motore) con un controllore PI in modo che segua una reference speed decisa da noi. Ne abbiamo provate varie e abbiamo salvato gli screenshot e i file .mat dei segnali di voltaggio e velocità angolare. Abbiamo usato i valori di kp e ki trovati tramite il metodo della tangente del lab 2.
-## Step 2
-Abbiamo implementato la forward/coast e tramite il valore di una variabile scegliamo in modo rapido se usare la forward/brake o la forward/coast. Con la forward/coast abbiamo notato che la ruota più lenta riesce a girare un po più velocemente (e ha senso).
-## Step 3
+## Esercizio 2
+Abbiamo implementato la forward/coast e tramite il valore di una variabile scegliamo in modo rapido se usare la forward/brake o la forward/coast. Con la forward/coast abbiamo notato che la ruota più lenta riesce a girare un po più velocemente (e ha senso). Abbiamo provato varie reference speed e abbiamo salvato i file .mat
+## Esercizio 3
 Abbiamo implementato nel closed feedback loop il blocco della saturazione (ovviamente uno per motore) per inserire l'Anti Wind-Up.
