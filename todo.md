@@ -15,3 +15,6 @@
 - [ ] super loop
 - [ ] plottare integrativo live
 - [ ] convertire da immagine a plot matlab
+- [ ] Riprendere tutte le run per sicurezza
+- [ ] Velocità della ruota + veloce a quanto arriva in FC
+ 
