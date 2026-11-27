@@ -11,10 +11,8 @@
 - [x] Open Loop su matlab e C
 
 - Lab3
-- [ ] keypad
-- [ ] super loop
-- [ ] plottare integrativo live
+- [ ] Riprendere tutti i valori, con anche integrativo
+- [ ] Implementare keypad
 - [ ] convertire da immagine a plot matlab
-- [ ] Riprendere tutte le run per sicurezza
 - [ ] Velocità della ruota + veloce a quanto arriva in FC
  
