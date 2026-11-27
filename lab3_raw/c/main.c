@@ -42,6 +42,7 @@
 #define DUTY2V	((float)VBATT/(TIM8_ARR_VALUE+1))
 
 #define RPM2RADS	2*M_PI/60
+#define VSAT 	6.0f
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -173,103 +174,157 @@ void clip_voltage(float* voltage){
 }
 */
 
-float motorControl1(float* voltage){
+float motorControl1(float* voltage, int8_t mode){
 	int32_t duty;
 
 	//clip_voltage(&voltage);
 
-	if(*voltage >= 6){
-		*voltage = 6;
-	}else if(*voltage <= -6 ){
-		*voltage = -6;
+	if(*voltage >= VSAT){
+		*voltage = VSAT;
+	}else if(*voltage <= -VSAT ){
+		*voltage = -VSAT;
 	}
 
 	duty = (*voltage * V2DUTY);
 
+	if(mode == 0){
+		/* calculate duty properly */
+		if ( duty >= 0) { // rotate forward
+			/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
+			__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_1 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+			__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_2 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
 
-	/* calculate duty properly */
-	if ( duty >= 0) { // rotate forward
-	/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
-		__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_1 , ( uint32_t ) TIM8_ARR_VALUE ) ;
-		__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_2 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
+		}else { // rotate backward
+			/* IMPORTANT: since duty<0 we need ARR - |duty|*/
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_2 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+		}
+	} else if(mode == 1){
+		/* calculate duty properly */
+		if ( duty >= 0) { // rotate forward
+			/* alternate between forward and coast , TIM8_ARR_VALUE is a define */
+			__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_1 , ( uint32_t ) duty ) ;
+			__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_2 , 0 ) ;
 
-	}else { // rotate backward
-    /* IMPORTANT: since duty<0 we need ARR - |duty|*/
-		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;
-		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_2 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+		}else { // rotate backward
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_1 , 0) ;
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_2 , ( uint32_t ) -duty);
+		}
 	}
 
-	return duty/(float)TIM8_ARR_VALUE;
+	return (float)duty * DUTY2V;
 }
 
-float motorControl2(float* voltage){
+float motorControl2(float* voltage, int8_t mode){
 	int32_t duty;
 
-	//clip_voltage(&voltage);
-	if(*voltage >= 6){
-		*voltage = 6;
-	}else if(*voltage <= -6 ){
-		*voltage = -6;
+	if(*voltage >= VSAT){
+		*voltage = VSAT;
+	}else if(*voltage <= -VSAT ){
+		*voltage = -VSAT;
 	}
 
 	duty = (*voltage * V2DUTY);
 
-	/* calculate duty properly */
-	if ( duty >= 0) { // rotate forward
-	/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
-		__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_3 , ( uint32_t ) TIM8_ARR_VALUE ) ;
-		__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_4 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
 
-	}else { // rotate backward
-  /* IMPORTANT: since duty<0 we need ARR - |duty|*/
-		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_3 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;
-		__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_4 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+	if(mode == 0){
+		/* calculate duty properly */
+		if ( duty >= 0) { // rotate forward
+		/* alternate between forward and brake , TIM8_ARR_VALUE is a define */
+			__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_3 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+			__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_4 , ( uint32_t ) ( TIM8_ARR_VALUE - duty ) ) ;
+
+		}else { // rotate backward
+	  /* IMPORTANT: since duty<0 we need ARR - |duty|*/
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_3 , ( uint32_t ) ( TIM8_ARR_VALUE + duty )) ;
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_4 , ( uint32_t ) TIM8_ARR_VALUE ) ;
+		}
+	}else if(mode == 1){
+		/* calculate duty properly */
+		if ( duty >= 0) { // rotate forward
+			/* alternate between forward and coast , TIM8_ARR_VALUE is a define */
+			__HAL_TIM_SET_COMPARE(&htim8 , TIM_CHANNEL_3 , ( uint32_t ) duty ) ;
+			__HAL_TIM_SET_COMPARE (&htim8 , TIM_CHANNEL_4 , 0 ) ;
+
+		}else { // rotate backward
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_3 , 0) ;
+			__HAL_TIM_SET_COMPARE (& htim8 , TIM_CHANNEL_4 , ( uint32_t ) - duty ) ;
+		}
 	}
 
-  /* What we return here is useless, its purpose is only about datalogging*/
-  /* The real meaningful data we should return is the voltage and the duty cycle*/
-  /* return duty/(float)TIM8_ARR_VALUE */
 
-	//float dutyPerc = (float)duty/100;
-
-	return duty/(float)TIM8_ARR_VALUE;
+	return (float)duty*DUTY2V;
 }
 
 float PIMotor1(float error){
-	//float kp1 = 2.8493f;
-	float kp1 = 15.0f;
-	float ki1 = 22.6051f;
+	float kp1 = 3.2003f;
+	float ki1 = 28.2849f;
 	static float I1 = 0.0f;
 
+	// ES 1
 	float P1 = kp1 * error;
+	//I1 = I1 + ki1 * error * TS;
+	float piVoltage1 = P1 + I1;
+
+	//Es3 Anti wind up
+	float sat_error = 0;
+	float k_awd1 = 0.3364f;
+
+	if(piVoltage1 >= VSAT){
+		sat_error = piVoltage1 - VSAT;
+	}else if(piVoltage1 <= -VSAT ){
+		sat_error = piVoltage1  + VSAT;
+	}
+
+	error = error - k_awd1 * sat_error;
+
 	I1 = I1 + ki1 * error * TS;
 
-	return P1 + I1;
+	return piVoltage1;
 }
 
 float PIMotor2(float error){
-	//float kp2 = 3.4020f;
-	float kp2 = 15.0f;
-	float ki2 = 29.0508f;
+	float kp2 = 3.4152f;
+	float ki2 = 27.6685f;
 	static float I2 = 0.0f;
 
+	// ES 1
 	float P2 = kp2 * error;
+	//I1 = I1 + ki1 * error * TS;
+	float piVoltage2 = P2 + I2;
+
+	//Es3 Anti wind up
+	float sat_error = 0;
+	float k_awd2 = 0.3513f;
+
+	if(piVoltage2 >= VSAT){
+		sat_error = piVoltage2 - VSAT;
+	}else if(piVoltage2 <= -VSAT ){
+		sat_error = piVoltage2  + VSAT;
+	}
+
+	error = error - k_awd2 * sat_error;
+
 	I2 = I2 + ki2 * error * TS;
 
-	return P2 + I2;
+	return piVoltage2;
 }
+
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 
 	static int kLed = 0;
-	//float voltage = 0;
+	//float voltage = 3.84f;
 
 	float PI1_voltage =  0.0f;
 	float PI2_voltage =  0.0f;
 
-	float ref_velocity = 12.0f;
+	float ref_velocity = 15.0f;
 
+	//mode = 0: forwardBrake, mode = 1: forwardCoast
+	int8_t mode = 1;
 
 	/* Speed ctrl routine */
 	if(htim->Instance == TIM6)
@@ -290,10 +345,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			data.u2 = PI2_voltage;
 		}
 
-		float duty_cycle1 = motorControl1(&data.u1);
-		float duty_cycle2 = motorControl2(&data.u2);
-		float clamped_voltage1 = duty_cycle1 * VBATT;
-		float clamped_voltage2 = duty_cycle2 * VBATT;
+		float clamped_voltage1 = motorControl1(&data.u1, mode);
+		float clamped_voltage2 = motorControl2(&data.u2, mode);
 
 		data.u1 = clamped_voltage1;
 		data.u2 = clamped_voltage2;
